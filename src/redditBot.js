@@ -7,13 +7,21 @@ async function getModhash(cookie) {
   const res = await fetch("https://old.reddit.com/api/me.json", {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Cookie": `reddit_session=${cookie}`
+      "Cookie": `reddit_session=${encodeURIComponent(cookie)}`,
+      "Accept": "application/json"
     }
   });
-  const data = await res.json();
-  const modhash = data?.data?.modhash;
-  log("Modhash fetch:", modhash ? "OK" : "FAILED");
-  return modhash || null;
+  const text = await res.text();
+  log("Modhash raw response:", text.slice(0,100));
+  try {
+    const data = JSON.parse(text);
+    const modhash = data?.data?.modhash;
+    log("Modhash fetch:", modhash ? "OK" : "FAILED — logged out?");
+    return modhash || null;
+  } catch(e) {
+    log("Modhash JSON parse failed — cookie likely expired or invalid");
+    return null;
+  }
 }
 
 async function postComment(postFullname, commentText, cookie, modhash) {
