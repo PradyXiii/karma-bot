@@ -72,5 +72,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failure-log-${{ github.run_number }}
-          path: /tmp/*.log
+          path: /tmp/*.png
           retention-days: 7
