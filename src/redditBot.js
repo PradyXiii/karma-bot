@@ -31,34 +31,45 @@ async function launchBrowser() {
 
 async function loginReddit(page, username, password) {
   log("Logging in...");
-  await page.goto("https://old.reddit.com/login/?dest=https%3A%2F%2Fold.reddit.com%2F",
+  
+  // Disable request interception temporarily for login (Reddit needs more resources)
+  await page.setRequestInterception(false);
+  
+  await page.goto("https://www.reddit.com/login/",
     {waitUntil:"networkidle2", timeout:30000});
   await jitter(2000,4000);
-  if (await page.$("a.logout")) { log("Already logged in."); return true; }
+
   try {
-    await page.waitForSelector("#user_login",{timeout:15000});
-    await page.click("#user_login");
+    // New Reddit login form selectors
+    await page.waitForSelector('input[name="username"]',{timeout:15000});
+    await page.click('input[name="username"]');
     await jitter(500,1000);
-    await humanType(page,"#user_login",username);
+    await humanType(page,'input[name="username"]',username);
     await jitter(400,900);
-    await page.click("#passwd_login");
+    await page.click('input[name="password"]');
     await jitter(300,600);
-    await humanType(page,"#passwd_login",password);
+    await humanType(page,'input[name="password"]',password);
     await jitter(800,1500);
-    await page.screenshot({path:"/tmp/before-login.png"});
-    await page.click("button.btn[type=submit]");
+    
+    await page.click('button[type="submit"]');
     await page.waitForNavigation({waitUntil:"networkidle2",timeout:25000});
     await jitter(2000,3000);
-    await page.screenshot({path:"/tmp/after-login.png"});
-    if (!await page.$("a.logout")) {
-      const errEl = await page.$(".error");
-      const errText = errEl ? await page.evaluate(el=>el.innerText,errEl) : "no logout link found";
-      log("Login failed:",errText); return false;
-    }
-    log("Login successful as",username); return true;
+
+    // Re-enable request interception
+    await page.setRequestInterception(true);
+    page.on("request", req => ["image","font","media"].includes(req.resourceType()) ? req.abort() : req.continue());
+
+    // Verify login by checking URL or user menu
+    const url = page.url();
+    const content = await page.content();
+    const loggedIn = !url.includes("/login") && (content.includes(username.toLowerCase()) || content.includes("logout") || content.includes("log out"));
+    
+    if (!loggedIn) { log("Login failed — still on login page or no user found"); return false; }
+    log("Login successful as", username);
+    return true;
   } catch(e) {
-    await page.screenshot({path:"/tmp/login-error.png"}).catch(()=>{});
-    log("loginReddit error:",e.message); return false;
+    log("loginReddit error:",e.message);
+    return false;
   }
 }
 
