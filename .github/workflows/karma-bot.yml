@@ -24,7 +24,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-        
 
       - name: Install Chromium dependencies
         run: |
@@ -48,6 +47,11 @@ jobs:
 
       - name: Install Node dependencies
         run: npm install
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+
+      - name: Install Chromium
+        run: npx puppeteer browsers install chrome
 
       - name: Run Karma Bot
         run: |
@@ -57,7 +61,7 @@ jobs:
             node src/index.js
           fi
         env:
-          OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
           REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
           GAS_LOG_URL:     ${{ secrets.GAS_LOG_URL }}
