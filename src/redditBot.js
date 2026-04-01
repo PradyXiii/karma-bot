@@ -30,7 +30,7 @@ async function postComment(postFullname, commentText, cookie, modhash) {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Cookie": `reddit_session=${cookie}`,
+      "Cookie": `reddit_session=${encodeURIComponent(cookie)}`,
       "X-Requested-With": "XMLHttpRequest",
       "Referer": "https://old.reddit.com"
     },
