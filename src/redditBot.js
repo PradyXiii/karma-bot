@@ -3,30 +3,30 @@ const DEBUG = process.env.DEBUG === "true";
 function log(...a) { if (DEBUG) console.log("[redditBot]", ...a); }
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-async function getRedditToken(username, password) {
-  const res = await fetch("https://www.reddit.com/api/v1/access_token", {
-    method: "POST",
+async function getModhash(cookie) {
+  const res = await fetch("https://old.reddit.com/api/me.json", {
     headers: {
-      "Authorization": "Basic " + Buffer.from("NO_CLIENT_ID:NO_CLIENT_SECRET").toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": `KarmaBot/1.0 by ${username}`
-    },
-    body: `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Cookie": `reddit_session=${cookie}`
+    }
   });
   const data = await res.json();
-  log("Token response:", JSON.stringify(data).slice(0,150));
-  return data.access_token || null;
+  const modhash = data?.data?.modhash;
+  log("Modhash fetch:", modhash ? "OK" : "FAILED");
+  return modhash || null;
 }
 
-async function postComment(token, postFullname, commentText, username) {
-  const res = await fetch("https://oauth.reddit.com/api/comment", {
+async function postComment(postFullname, commentText, cookie, modhash) {
+  const res = await fetch("https://old.reddit.com/api/comment", {
     method: "POST",
     headers: {
-      "Authorization": `bearer ${token}`,
       "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": `KarmaBot/1.0 by ${username}`
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Cookie": `reddit_session=${cookie}`,
+      "X-Requested-With": "XMLHttpRequest",
+      "Referer": "https://old.reddit.com"
     },
-    body: `thing_id=${encodeURIComponent(postFullname)}&text=${encodeURIComponent(commentText)}`
+    body: `thing_id=${encodeURIComponent(postFullname)}&text=${encodeURIComponent(commentText)}&uh=${encodeURIComponent(modhash)}&api_type=json`
   });
   const data = await res.json();
   log("Comment response:", JSON.stringify(data).slice(0,200));
@@ -37,7 +37,7 @@ async function postComment(token, postFullname, commentText, username) {
 async function fetchKarma(username) {
   try {
     const res = await fetch(`https://www.reddit.com/user/${encodeURIComponent(username)}/about.json`,
-      { headers: { "User-Agent": `KarmaBot/1.0 by ${username}` }, timeout: 10000 });
+      { headers: { "User-Agent": "KarmaBot/1.0" }, timeout: 10000 });
     if (!res.ok) return null;
     const data = await res.json();
     return {
@@ -50,27 +50,27 @@ async function fetchKarma(username) {
 
 async function runBotSession(targets) {
   const username = process.env.REDDIT_USERNAME;
-  const password = process.env.REDDIT_PASSWORD;
-  if (!username || !password) throw new Error("REDDIT_USERNAME or REDDIT_PASSWORD not set.");
+  const cookie   = process.env.REDDIT_SESSION_COOKIE;
+  if (!username || !cookie) throw new Error("REDDIT_USERNAME or REDDIT_SESSION_COOKIE not set.");
 
-  const token = await getRedditToken(username, password);
-  if (!token) throw new Error("Reddit token fetch failed. Check credentials.");
-  log("Token acquired.");
+  // Fetch fresh modhash from session (more reliable than storing it)
+  const modhash = await getModhash(cookie);
+  if (!modhash) throw new Error("Could not get modhash — session cookie may be expired.");
+  log("Session valid. Modhash acquired.");
 
   const results = [];
   for (const target of targets) {
-    // Extract post ID and build t3_ fullname
     const match = target.postUrl.match(/\/comments\/([a-z0-9]+)\//i);
-    if (!match) { log("Could not extract post ID from:", target.postUrl); continue; }
+    if (!match) { log("Could not extract post ID:", target.postUrl); continue; }
     const postFullname = "t3_" + match[1];
 
-    const result = await postComment(token, postFullname, target.comment, username);
+    const result = await postComment(postFullname, target.comment, cookie, modhash);
     results.push({ ...target, posted: result.success, error: result.error || null, postedAt: new Date().toISOString() });
     log(result.success ? `Posted: ${target.postTitle?.slice(0,60)}` : `Failed: ${result.error}`);
 
     if (targets.indexOf(target) < targets.length - 1) {
       const delay = 180000 + Math.floor(Math.random() * 240000);
-      log(`Waiting ${Math.round(delay / 60000)} min before next comment...`);
+      log(`Waiting ${Math.round(delay/60000)} min before next comment...`);
       await sleep(delay);
     }
   }
