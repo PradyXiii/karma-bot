@@ -25,33 +25,8 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Chromium dependencies
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q \
-            libatk1.0-0 \
-            libatk-bridge2.0-0 \
-            libgdk-pixbuf2.0-0 \
-            libgtk-3-0 \
-            libgbm-dev \
-            libnss3-dev \
-            libxss-dev \
-            libasound2t64 \
-            fonts-liberation
-
-      - name: Cache Puppeteer Chromium
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/puppeteer
-          key: puppeteer-chromium-${{ runner.os }}
-
-      - name: Install Node dependencies
+      - name: Install dependencies
         run: npm install
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: "true"
-
-      - name: Install Chromium
-        run: npx puppeteer browsers install chrome
 
       - name: Run Karma Bot
         run: |
@@ -61,16 +36,8 @@ jobs:
             node src/index.js
           fi
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
           REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
           REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
           GAS_LOG_URL:     ${{ secrets.GAS_LOG_URL }}
           DEBUG:           "true"
-
-      - name: Upload log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: failure-log-${{ github.run_number }}
-          path: /tmp/*.png
-          retention-days: 7
