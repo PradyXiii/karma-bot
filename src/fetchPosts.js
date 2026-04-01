@@ -42,7 +42,7 @@ async function fetchPostsForCategory(subreddits, terms, maxPosts=5) {
 
   for (const subreddit of subs) {
     if (results.length >= maxPosts) break;
-    const url = `${ARCTIC_BASE}/posts/search?subreddit=${encodeURIComponent(subreddit)}&title=${encodeURIComponent(term)}&limit=25&sort=desc&sort_type=created_utc&after=4h`;
+    const url = `${ARCTIC_BASE}/posts/search?subreddit=${encodeURIComponent(subreddit)}&title=${encodeURIComponent(term)}&limit=25&sort=desc&sort_type=created_utc&after=7d`;
     const data = await arcticGet(url);
     await sleep(2500);
     if (!data || !Array.isArray(data.data)) continue;
