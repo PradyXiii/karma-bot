@@ -40,6 +40,12 @@ jobs:
             libasound2t64 \
             fonts-liberation
 
+      - name: Cache Puppeteer Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-chromium-${{ runner.os }}
+
       - name: Install Node dependencies
         run: npm install
 
