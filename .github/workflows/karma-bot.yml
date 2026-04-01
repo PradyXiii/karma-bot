@@ -1,0 +1,67 @@
+name: Karma Bot
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no actual posting)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  run-karma-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Chromium dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
+            libgconf-2-4 \
+            libatk1.0-0 \
+            libatk-bridge2.0-0 \
+            libgdk-pixbuf2.0-0 \
+            libgtk-3-0 \
+            libgbm-dev \
+            libnss3-dev \
+            libxss-dev \
+            libasound2 \
+            fonts-liberation
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run Karma Bot
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            node src/index.js --dry-run
+          else
+            node src/index.js
+          fi
+        env:
+          OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          GAS_LOG_URL:     ${{ secrets.GAS_LOG_URL }}
+          DEBUG:           "true"
+
+      - name: Upload log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-log-${{ github.run_number }}
+          path: /tmp/*.log
+          retention-days: 7
