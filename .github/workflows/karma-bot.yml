@@ -36,7 +36,7 @@ jobs:
             node src/index.js
           fi
         env:
-          OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
           REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
           GAS_LOG_URL:     ${{ secrets.GAS_LOG_URL }}
