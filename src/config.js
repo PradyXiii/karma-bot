@@ -30,7 +30,7 @@ const CATEGORY_WEIGHTS = [
 
 const ARCTIC_BASE = "https://arctic-shift.photon-reddit.com/api";
 const COMMENTS_PER_RUN = 2;
-const POST_MAX_AGE_HOURS = 4;
+const POST_MAX_AGE_HOURS = 168; // 7 days
 const POST_MAX_EXISTING_COMMENTS = 50;
 const POST_MIN_SCORE = 1;
 const HARD_EXCLUDES = [
