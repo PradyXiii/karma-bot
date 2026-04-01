@@ -24,23 +24,22 @@ async function launchBrowser() {
   const page = await browser.newPage();
   await page.setViewport({width:1280,height:800});
   await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+  // Do NOT enable request interception here — enable after login
+  return {browser, page};
+}
+
+async function enableInterception(page) {
   await page.setRequestInterception(true);
   page.on("request", req => ["image","font","media"].includes(req.resourceType()) ? req.abort() : req.continue());
-  return {browser, page};
 }
 
 async function loginReddit(page, username, password) {
   log("Logging in...");
-  
-  // Disable request interception temporarily for login (Reddit needs more resources)
-  await page.setRequestInterception(false);
-  
   await page.goto("https://www.reddit.com/login/",
     {waitUntil:"networkidle2", timeout:30000});
   await jitter(2000,4000);
 
   try {
-    // New Reddit login form selectors
     await page.waitForSelector('input[name="username"]',{timeout:15000});
     await page.click('input[name="username"]');
     await jitter(500,1000);
@@ -50,22 +49,22 @@ async function loginReddit(page, username, password) {
     await jitter(300,600);
     await humanType(page,'input[name="password"]',password);
     await jitter(800,1500);
-    
     await page.click('button[type="submit"]');
     await page.waitForNavigation({waitUntil:"networkidle2",timeout:25000});
     await jitter(2000,3000);
 
-    // Re-enable request interception
-    await page.setRequestInterception(true);
-    page.on("request", req => ["image","font","media"].includes(req.resourceType()) ? req.abort() : req.continue());
-
-    // Verify login by checking URL or user menu
     const url = page.url();
     const content = await page.content();
-    const loggedIn = !url.includes("/login") && (content.includes(username.toLowerCase()) || content.includes("logout") || content.includes("log out"));
-    
-    if (!loggedIn) { log("Login failed — still on login page or no user found"); return false; }
+    const loggedIn = !url.includes("/login") && (
+      content.includes(username.toLowerCase()) ||
+      content.includes("logout") ||
+      content.includes("log out")
+    );
+    if (!loggedIn) { log("Login failed — still on login page"); return false; }
     log("Login successful as", username);
+
+    // Enable interception AFTER login is complete
+    await enableInterception(page);
     return true;
   } catch(e) {
     log("loginReddit error:",e.message);
