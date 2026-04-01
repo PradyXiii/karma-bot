@@ -1,38 +1,46 @@
 const fetch = require("node-fetch");
-const { OPENAI_API_URL, OPENAI_ASSESS_MODEL, OPENAI_GENERATE_MODEL } = require("./config");
+const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
+const CLAUDE_MODEL = "claude-sonnet-4-5";
 const DEBUG = process.env.DEBUG === "true";
 function log(...a) { if (DEBUG) console.log("[aiEngine]", ...a); }
 
-async function callOpenAI(payload) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY not set");
-  const res = await fetch(OPENAI_API_URL, {
+async function callClaude(system, user, maxTokens=180) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+  const res = await fetch(CLAUDE_API_URL, {
     method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
-    body:JSON.stringify(payload),
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": apiKey,
+      "anthropic-version":"2023-06-01"
+    },
+    body:JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: maxTokens,
+      system: system,
+      messages:[{role:"user", content:user}]
+    }),
     timeout:20000
   });
-  if (!res.ok) { const e = await res.text(); throw new Error(`OpenAI ${res.status}: ${e.slice(0,200)}`); }
+  if (!res.ok) { const e=await res.text(); throw new Error(`Claude ${res.status}: ${e.slice(0,200)}`); }
   return res.json();
 }
 
 async function assessPost(post, category) {
   const prompts = {
-    ANIME:`Classify Reddit anime posts for commentable engagement. Accept (score>=6): episode/series discussion, recommendations, hot takes, "just finished", controversial opinions. Reject: art-only, cosplay-only, mod posts. Return JSON: {"score":0-10,"reason":"short"}`,
-    FINANCE:`Classify Indian finance Reddit posts. Accept (score>=6): beginner questions, conceptual confusion, "where to start", investment philosophy. Reject: stock tips, portfolio review, platform recs, buy/sell. Return JSON: {"score":0-10,"reason":"short"}`,
-    YOUTUBE:`Classify small YouTube creator posts. Accept (score>=6): milestone posts, algorithm rants, growth struggles, burnout. Reject: channel promos, sub4sub. Return JSON: {"score":0-10,"reason":"short"}`,
-    GENERAL:`Classify for commentable engagement. Accept (score>=6): relatable experiences, hot takes, genuine life questions. Reject: political flamebait, mod posts. Return JSON: {"score":0-10,"reason":"short"}`
+    ANIME:`Classify Reddit anime posts for commentable engagement. Accept (score>=6): episode/series discussion, recommendations, hot takes, "just finished", controversial opinions. Reject: art-only, cosplay-only, mod posts. Respond with JSON only, no other text: {"score":0-10,"reason":"short"}`,
+    FINANCE:`Classify Indian finance Reddit posts. Accept (score>=6): beginner questions, conceptual confusion, "where to start", investment philosophy. Reject: stock tips, portfolio review, platform recs, buy/sell. Respond with JSON only, no other text: {"score":0-10,"reason":"short"}`,
+    YOUTUBE:`Classify small YouTube creator posts. Accept (score>=6): milestone posts, algorithm rants, growth struggles, burnout. Reject: channel promos, sub4sub. Respond with JSON only, no other text: {"score":0-10,"reason":"short"}`,
+    GENERAL:`Classify for commentable engagement. Accept (score>=6): relatable experiences, hot takes, genuine life questions. Reject: political flamebait, mod posts. Respond with JSON only, no other text: {"score":0-10,"reason":"short"}`
   };
   try {
-    const data = await callOpenAI({
-      model:OPENAI_ASSESS_MODEL,
-      messages:[
-        {role:"system",content:prompts[category]||prompts.GENERAL},
-        {role:"user",content:`SUBREDDIT: r/${post.subreddit}\nTITLE: ${String(post.title).slice(0,300)}\nBODY: ${String(post.body).slice(0,500)}`}
-      ],
-      temperature:0.1, max_tokens:80, response_format:{type:"json_object"}
-    });
-    const r = JSON.parse(data.choices?.[0]?.message?.content||"{}");
+    const data = await callClaude(
+      prompts[category]||prompts.GENERAL,
+      `SUBREDDIT: r/${post.subreddit}\nTITLE: ${String(post.title).slice(0,300)}\nBODY: ${String(post.body).slice(0,500)}`,
+      80
+    );
+    const raw = String(data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim();
+    const r = JSON.parse(raw);
     log(`Assess r/${post.subreddit}: score=${r.score}`);
     return {score:Number(r.score||0), reason:r.reason||""};
   } catch(e) { log("assessPost error:",e.message); return {score:0,reason:"error"}; }
@@ -108,16 +116,8 @@ async function generateComment(post, category) {
   const systemPrompt = PERSONAS[category]||PERSONAS.GENERAL;
   const userPrompt = `Subreddit: r/${post.subreddit}\nPost title: ${String(post.title).slice(0,300)}\nPost body: ${String(post.body).slice(0,700)}\n\nWrite the comment now. 2-4 lines max. No links. Genuine.`;
   try {
-    const data = await callOpenAI({
-      model:OPENAI_GENERATE_MODEL,
-      reasoning_effort:"none",
-      messages:[
-        {role:"developer",content:systemPrompt},
-        {role:"user",content:userPrompt}
-      ],
-      max_completion_tokens:180
-    });
-    let comment = String(data.choices?.[0]?.message?.content||"").trim();
+    const data = await callClaude(systemPrompt, userPrompt, 180);
+    let comment = String(data.content?.[0]?.text||"").trim();
     comment = sanitize(comment);
     if (!comment || comment.split(/\s+/).length < 10) { log("Comment too short, discarding"); return null; }
     log("Generated:",comment.slice(0,80)+"...");
