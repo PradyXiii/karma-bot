@@ -3,7 +3,6 @@ const FINANCE_SUBREDDITS = [
   "IndiaInvestments","IndianStreetBets","mutualfunds","MutualfundsIndia",
   "IndiaFinance","FIRE_Ind","DalalStreetTalks","IndiaAlgoTrading","StartInvestIN"
 ];
-
 const ANIME_SUBREDDITS = [
   "anime","Animesuggest","whatanimetowatchnext","OnePiece","Naruto",
   "Jujutsukaisen","DemonSlayerAnime","attackontitan","Chainsaw_man",
@@ -11,15 +10,12 @@ const ANIME_SUBREDDITS = [
   "animememes","anime_irl","goodanimemes","DrStone","BlueLock",
   "overlord","AnimeReccomendations","dbz","MyHeroAcademia"
 ];
-
 const YOUTUBE_SUBREDDITS = [
   "NewTubers","SmallYoutubers","youtubers","TinyYoutubers","GrowMyChannel","YouTubeCreators"
 ];
-
 const GENERAL_SUBREDDITS = [
   "CasualConversation","mildlyinteresting","Showerthoughts","unpopularopinion","LifeProTips"
 ];
-
 const FINANCE_TERMS = ["how to start","beginner","confused","help","SIP","index fund","question","advice"];
 const ANIME_TERMS  = ["recommend","just finished","thoughts on","is it worth","unpopular opinion","best arc","underrated","suggest"];
 const YOUTUBE_TERMS = ["subscribers","views","algorithm","struggling","milestone","rant","growth"];
@@ -44,9 +40,6 @@ const HARD_EXCLUDES = [
   "mods","mega thread","weekly thread","daily thread",
   "crypto","bitcoin","nft","web3"
 ];
-const OPENAI_API_URL     = "https://api.openai.com/v1/chat/completions";
-const OPENAI_ASSESS_MODEL   = "gpt-4o-mini";
-const OPENAI_GENERATE_MODEL = "gpt-5.2";
 const GAS_LOG_URL = process.env.GAS_LOG_URL || "";
 
 module.exports = {
@@ -54,5 +47,5 @@ module.exports = {
   FINANCE_TERMS,ANIME_TERMS,YOUTUBE_TERMS,GENERAL_TERMS,
   CATEGORY_WEIGHTS,ARCTIC_BASE,COMMENTS_PER_RUN,
   POST_MAX_AGE_HOURS,POST_MAX_EXISTING_COMMENTS,POST_MIN_SCORE,
-  HARD_EXCLUDES,OPENAI_API_URL,OPENAI_ASSESS_MODEL,OPENAI_GENERATE_MODEL,GAS_LOG_URL
+  HARD_EXCLUDES,GAS_LOG_URL
 };
