@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { CATEGORY_WEIGHTS, COMMENTS_PER_RUN } = require("./config");
 const { fetchPostsForCategory, alreadyCommented } = require("./fetchPosts");
 const { assessPost, generateComment } = require("./aiEngine");
